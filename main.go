@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -15,16 +16,24 @@ func main() {
 	}
 	defer file.Close()
 
-	chunk := make([]byte, 8)
+	line := ""
 	for {
-		n, err := file.Read(chunk)
+		buf := make([]byte, 8)
+		n, err := file.Read(buf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				log.Fatal("Error reading from file: %w", err)
 			}
+			if line != "" {
+				fmt.Printf("read: %s%d\n", line, len(line))
+			}
 			break
 		}
-
-		fmt.Printf("read: %s\n", string(chunk[:n]))
+		parts := strings.Split(string(buf[:n]), "\n")
+		for _, part := range parts[:len(parts)-1] {
+			fmt.Printf("read: %s%s\n", line, part)
+			line = ""
+		}
+		line += string(parts[len(parts)-1])
 	}
 }
