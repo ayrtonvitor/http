@@ -110,4 +110,32 @@ func TestHeaderParse(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
+
+	// Test: multiple values for same header
+	headers = NewHeaders()
+	data = []byte("Set-Person: p1\r\nContent-Type: application/json\r\nSet-Person: p2\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "p1", headers["set-person"])
+	assert.Equal(t, 1, len(headers))
+	assert.Equal(t, 16, n)
+	assert.False(t, done)
+	data = data[n:]
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "p1", headers["set-person"])
+	assert.Equal(t, "application/json", headers["content-type"])
+	assert.Equal(t, 2, len(headers))
+	assert.Equal(t, 32, n)
+	assert.False(t, done)
+	data = data[n:]
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "p1, p2", headers["set-person"])
+	assert.Equal(t, 2, len(headers))
+	assert.Equal(t, 16, n)
+	assert.False(t, done)
 }

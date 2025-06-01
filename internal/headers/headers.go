@@ -42,7 +42,7 @@ func (h Headers) parseHeaderFromString(str string) (done bool, err error) {
 		return false, errMalformedHeader
 	}
 
-	key := strings.TrimSpace(str[:idx])
+	key := strings.TrimSpace(strings.ToLower(str[:idx]))
 	if hasBadChar(key) {
 		return false, errInvalidFieldName
 	}
@@ -52,7 +52,10 @@ func (h Headers) parseHeaderFromString(str string) (done bool, err error) {
 		return false, errEmptyValHeader
 	}
 
-	h[strings.ToLower(key)] = val
+	if oldVal, ok := h[key]; ok {
+		val = oldVal + ", " + val
+	}
+	h[key] = val
 
 	return true, nil
 }
@@ -67,7 +70,7 @@ func hasBadChar(str string) bool {
 }
 
 var allowedChars = func() map[rune]struct{} {
-	const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'*+-.^_`|~"
+	const allowed = "abcdefghijklmnopqrstuvwxyz!#$%&'*+-.^_`|~"
 	m := map[rune]struct{}{}
 	for _, r := range allowed {
 		m[r] = struct{}{}
