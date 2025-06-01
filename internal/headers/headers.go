@@ -16,6 +16,7 @@ const crlf = "\r\n"
 
 var errMalformedHeader = errors.New("Malformed heder")
 var errEmptyValHeader = errors.New("Header does not contain a valid value")
+var errInvalidFieldName = errors.New("Field name contains invalid characters")
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	idx := bytes.Index(data, []byte(crlf))
@@ -42,12 +43,34 @@ func (h Headers) parseHeaderFromString(str string) (done bool, err error) {
 	}
 
 	key := strings.TrimSpace(str[:idx])
+	if hasBadChar(key) {
+		return false, errInvalidFieldName
+	}
+
 	val := strings.TrimSpace(str[idx+1:])
 	if len(val) == 0 {
 		return false, errEmptyValHeader
 	}
 
-	h[key] = val
+	h[strings.ToLower(key)] = val
 
 	return true, nil
 }
+
+func hasBadChar(str string) bool {
+	for _, r := range str {
+		if _, ok := allowedChars[r]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+var allowedChars = func() map[rune]struct{} {
+	const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&'*+-.^_`|~"
+	m := map[rune]struct{}{}
+	for _, r := range allowed {
+		m[r] = struct{}{}
+	}
+	return m
+}()
