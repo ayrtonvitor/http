@@ -127,6 +127,14 @@ func TestParsingRequestHeaders(t *testing.T) {
 	assert.Equal(t, "localhost:42069", r.Headers["host"])
 	assert.Equal(t, "curl/7.81.0, my-test", r.Headers["user-agent"])
 	assert.Equal(t, "*/*", r.Headers["accept"])
+
+	// Test: Missing End Of Headers
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHost: localhost: 42069",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.Error(t, err)
 }
 
 type chunkReader struct {
