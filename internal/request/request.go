@@ -6,10 +6,13 @@ import (
 	"io"
 	"slices"
 	"strings"
+
+	"github.com/ayrtonvitor/http/internal/headers"
 )
 
 type Request struct {
 	RequestLine RequestLine
+	Headers     headers.Headers
 	state       reqState
 }
 
@@ -24,6 +27,7 @@ type reqState = int
 const (
 	reqStateInitialized reqState = iota
 	reqStateDone
+	reqStateParsingHeaders
 )
 
 const crlf = "\r\n"
@@ -38,10 +42,12 @@ var ErrUnsupportedVersion = errors.New("HTTP version is not supported")
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	req := &Request{
-		state: reqStateInitialized,
+		state:   reqStateInitialized,
+		Headers: headers.NewHeaders(),
 	}
 	buf := make([]byte, bufSize)
 	nRead := 0
+	eofHit := false
 
 	for req.state != reqStateDone {
 		if nRead >= len(buf) {
@@ -49,16 +55,18 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 
 		nReadNew, err := reader.Read(buf[nRead:])
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				req.state = reqStateDone
-				break
-			}
+		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, err
+		}
+		if errors.Is(err, io.EOF) && req.state != reqStateDone {
+			if eofHit {
+				return nil, ErrMalformedReq
+			}
+			eofHit = true
 		}
 		nRead += nReadNew
 
-		nParsed, err := req.parse(buf)
+		nParsed, err := req.parse(buf[:nRead], eofHit)
 		if err != nil {
 			return nil, err
 		}
@@ -68,13 +76,18 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			nRead -= nParsed
 		}
 	}
+
 	return req, nil
 }
 
-func (r *Request) parse(data []byte) (int, error) {
+func (r *Request) parse(data []byte, reqEnd bool) (int, error) {
 	switch r.state {
 	case reqStateInitialized:
-		return r.parseInitReq(data)
+		n, rlDone, err := r.parseInitReq(data)
+		return r.handleInnerParseReturn(n, err, reqEnd, rlDone, reqStateParsingHeaders)
+	case reqStateParsingHeaders:
+		n, hDone, err := r.Headers.Parse(data)
+		return r.handleInnerParseReturn(n, err, reqEnd, hDone, reqStateDone)
 	case reqStateDone:
 		return 0, errProcReqInDoneState
 	default:
@@ -82,19 +95,36 @@ func (r *Request) parse(data []byte) (int, error) {
 	}
 }
 
-func (r *Request) parseInitReq(data []byte) (int, error) {
-	reqLine, n, err := parseRequestLine(data)
+func (r *Request) handleInnerParseReturn(n int, err error, reqEnd, done bool, nextState reqState) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	if reqEnd {
+		if !done {
+			return 0, ErrMalformedReq
+		}
+		r.state = reqStateDone
+		return n, nil
+	}
+	if done {
+		r.state = nextState
+		return n, nil
+	}
+	return n, nil
+}
 
-	if n == 0 {
-		return 0, err
+func (r *Request) parseInitReq(data []byte) (int, bool, error) {
+	reqLine, n, err := parseRequestLine(data)
+	if err != nil {
+		return 0, false, err
 	}
 
-	r.state = reqStateDone
+	if n == 0 {
+		return 0, false, nil
+	}
+
 	r.RequestLine = *reqLine
-	return n, nil
+	return n, true, nil
 }
 
 func parseRequestLine(rawReq []byte) (*RequestLine, int, error) {
