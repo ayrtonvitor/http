@@ -13,6 +13,7 @@ import (
 type Request struct {
 	RequestLine RequestLine
 	Headers     headers.Headers
+	Body        Body
 	state       reqState
 }
 
