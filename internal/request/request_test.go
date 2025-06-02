@@ -51,6 +51,10 @@ func TestRequestLineParse(t *testing.T) {
 		"GET /coffee HTTP/2\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
 	))
 	require.Error(t, err)
+
+	// Test: Incomplete request line
+	_, err = RequestFromReader(strings.NewReader("Get / HTT"))
+	require.Error(t, err)
 }
 
 func TestNumBytesPerReadParsingRequsetLine(t *testing.T) {
