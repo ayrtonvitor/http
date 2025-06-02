@@ -103,6 +103,18 @@ func TestParsingRequestHeaders(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	assert.Empty(t, r.Headers)
+
+	// Test: Duplicate Headers
+	reader = &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\nUser-Agent: my-test\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, "localhost:42069", r.Headers["host"])
+	assert.Equal(t, "curl/7.81.0, my-test", r.Headers["user-agent"])
+	assert.Equal(t, "*/*", r.Headers["accept"])
 }
 
 type chunkReader struct {
