@@ -29,6 +29,7 @@ const (
 	reqStateInitialized reqState = iota
 	reqStateDone
 	reqStateParsingHeaders
+	reqStateParsingBody
 )
 
 const crlf = "\r\n"
@@ -85,33 +86,43 @@ func (r *Request) parse(data []byte, reqEnd bool) (int, error) {
 	switch r.state {
 	case reqStateInitialized:
 		n, rlDone, err := r.parseInitReq(data)
-		return r.handleInnerParseReturn(n, err, reqEnd, rlDone, reqStateParsingHeaders)
+		pars := handleInnerParseReturnParams{
+			nRead:      n,
+			nextState:  reqStateParsingHeaders,
+			err:        err,
+			reqEnd:     reqEnd,
+			callerDone: rlDone,
+		}
+		return r.handleInnerParseReturn(pars)
+
 	case reqStateParsingHeaders:
 		n, hDone, err := r.Headers.Parse(data)
-		return r.handleInnerParseReturn(n, err, reqEnd, hDone, reqStateDone)
+		pars := handleInnerParseReturnParams{
+			nRead:      n,
+			nextState:  reqStateParsingBody,
+			finalizer:  r.prepareToParseBody,
+			err:        err,
+			reqEnd:     reqEnd,
+			callerDone: hDone,
+		}
+		return r.handleInnerParseReturn(pars)
+
+	case reqStateParsingBody:
+		n, bDone, err := r.Body.parse(data)
+		pars := handleInnerParseReturnParams{
+			nRead:      n,
+			nextState:  reqStateDone,
+			err:        err,
+			reqEnd:     reqEnd,
+			callerDone: bDone,
+		}
+		return r.handleInnerParseReturn(pars)
+
 	case reqStateDone:
 		return 0, errProcReqInDoneState
 	default:
 		return 0, errUnknownReqState
 	}
-}
-
-func (r *Request) handleInnerParseReturn(n int, err error, reqEnd, done bool, nextState reqState) (int, error) {
-	if err != nil {
-		return 0, err
-	}
-	if reqEnd {
-		if !done {
-			return 0, ErrMalformedReq
-		}
-		r.state = reqStateDone
-		return n, nil
-	}
-	if done {
-		r.state = nextState
-		return n, nil
-	}
-	return n, nil
 }
 
 func (r *Request) parseInitReq(data []byte) (int, bool, error) {

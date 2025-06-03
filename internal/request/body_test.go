@@ -20,7 +20,7 @@ func TestBodyParsing(t *testing.T) {
 	r, err := RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
-	assert.Equal(t, "hello world!\n", string(r.Body))
+	assert.Equal(t, "hello world!\n", string(r.Body.content))
 
 	// Test: Body shorter than reported content length
 	reader = &chunkReader{
