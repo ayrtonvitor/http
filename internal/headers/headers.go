@@ -14,7 +14,7 @@ func NewHeaders() Headers {
 
 const crlf = "\r\n"
 
-var errMalformedHeader = errors.New("Malformed heder")
+var errMalformedHeader = errors.New("Malformed header")
 var errEmptyValHeader = errors.New("Header does not contain a valid value")
 var errInvalidFieldName = errors.New("Field name contains invalid characters")
 
