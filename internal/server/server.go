@@ -5,6 +5,9 @@ import (
 	"log"
 	"net"
 	"sync/atomic"
+
+	"github.com/ayrtonvitor/http/internal/headers"
+	"github.com/ayrtonvitor/http/internal/response"
 )
 
 type Server struct {
@@ -49,9 +52,8 @@ func (s *Server) listen() {
 
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
-	resp := "HTTP/1.1 200 OK\r\n" +
-		"Content-Type: text/plain\r\n" +
-		"\r\n" +
-		"Hello World!\n"
-	conn.Write([]byte(resp))
+	headers := headers.GetDefaultHeaders(0)
+
+	response.WriteStatusLine(conn, response.StatusCodeOk)
+	response.WriteHeaders(conn, headers)
 }
