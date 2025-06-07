@@ -21,3 +21,7 @@ func (b *Body) parse(data []byte) (int, bool, error) {
 	}
 	return len(data), len(b.content) == b.expectedLength, nil
 }
+
+func (b *Body) AsString() string {
+	return string(b.content)
+}
