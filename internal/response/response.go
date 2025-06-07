@@ -3,19 +3,22 @@ package response
 import (
 	"fmt"
 	"io"
+
+	"github.com/ayrtonvitor/http/internal/headers"
 )
 
 const httpVersion = "HTTP/1.1"
+const crlf = "\r\n"
 
-func WriteStatusLine(w io.Writer, statusCode httpStatusCode) error {
+func WriteStatusLine(w io.Writer, statusCode HttpStatusCode) error {
 	var statusText string
 	switch statusCode {
-	case statusCodeOk:
-		statusText = string(statusTextOk)
-	case statusCodeBadRequest:
-		statusText = string(statusTextBadRequest)
-	case statusCodeInternalServerError:
-		statusText = string(statusTextInternalServerError)
+	case StatusCodeOk:
+		statusText = string(StatusTextOk)
+	case StatusCodeBadRequest:
+		statusText = string(StatusTextBadRequest)
+	case StatusCodeInternalServerError:
+		statusText = string(StatusTextInternalServerError)
 	default:
 		statusText = ""
 	}
